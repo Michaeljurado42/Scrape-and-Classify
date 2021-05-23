@@ -80,7 +80,8 @@ def fetch_image_urls(query:str, max_links_to_fetch:int, wd:webdriver, sleep_betw
 
 def persist_image(folder_path:str,file_name:str,url:str):
     try:
-        image_content = requests.get(url).content
+        print("getting requests")
+        image_content = requests.get(url, timeout=15).content
 
     except Exception as e:
         print(f"ERROR - Could not download {url} - {e}")

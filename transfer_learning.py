@@ -96,16 +96,19 @@ if __name__ == "__main__":
         width_shift_range=.1,
         height_shift_range=.1,
         preprocessing_function=preprocessing_function)
-
+    
     validation_datagen = tensorflow.keras.preprocessing.image.ImageDataGenerator(preprocessing_function=preprocessing_function)    
 
     # create data generators
-    training_generator = train_datagen.flow_from_directory("dataset/train", target_size=(256, 256), class_mode="sparse")
-    validation_generator = validation_datagen.flow_from_directory("dataset/validation", target_size=(256, 256), class_mode="sparse")
-    test_generator = validation_datagen.flow_from_directory("dataset/test", target_size=(256, 256), class_mode="sparse")
+    training_generator = train_datagen.flow_from_directory("dataset/train", target_size=(256, 256), class_mode="sparse", batch_size=16)
+    validation_generator = validation_datagen.flow_from_directory("dataset/validation", target_size=(256, 256), class_mode="sparse", batch_size=16)
+    test_generator = validation_datagen.flow_from_directory("dataset/test", target_size=(256, 256), class_mode="sparse", batch_size=16)
     
+    # print out training label assignments
+    labels = (training_generator.class_indices)
+    print(labels)
     # create transfer learn model
-    model = deep_learning_wrapper((256, 256, 3), MobileNet, np.unique(training_generator.classes).shape[0])
+    model = deep_learning_wrapper((256, 256, 3), MODEL, np.unique(training_generator.classes).shape[0])
     loss = tensorflow.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
     model.compile(optimizer="Adam", loss=loss, metrics=["accuracy"])
 
