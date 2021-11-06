@@ -127,26 +127,26 @@ if __name__ == "__main__":
     model = tf.keras.models.load_model(model_path,   compile = False)
 
     methods = [generate_cam_map, generate_scorecam_map, generate_saliency_map]
-    f, ax = plt.subplots(nrows=len(methods), ncols=2, figsize=(12, 4))
+    f, ax = plt.subplots(nrows=2, ncols=len(methods), figsize=(12, 4))
     for method_idx in range(len(methods)): # iterate over score methods
         vis_method = methods[method_idx]
         
         for i, title in enumerate(image_titles[:2]):
             heatmap = vis_method(model, cv2.resize(x_test[i], (224, 224)), y_test[i][0]) # generate cam vis
             if vis_method == generate_saliency_map:
-                ax[method_idx][i].imshow(heatmap, cmap='jet') # do not overlay
+                ax[i][method_idx].imshow(heatmap, cmap='jet') # do not overlay
             else:
-                ax[method_idx][i].imshow(cv2.resize(images[i],(224,224)))
-                ax[method_idx][i].imshow(heatmap, cmap='jet', alpha=0.5) # overlay
+                ax[i][method_idx].imshow(cv2.resize(images[i],(224,224)))
+                ax[i][method_idx].imshow(heatmap, cmap='jet', alpha=0.5) # overlay
 
             if vis_method == generate_cam_map:
-                ax[method_idx][i].set_title("Grad Cam for %s" % title)
+                ax[i][method_idx].set_title("Grad Cam for %s" % title)
             elif vis_method == generate_scorecam_map:
-                ax[method_idx][i].set_title("Score Cam %s" % title)
+                ax[i][method_idx].set_title("Score Cam %s" % title)
             elif vis_method ==  generate_saliency_map:
-                ax[method_idx][i].set_title("Saliency Map %s" % title)
+                ax[i][method_idx].set_title("Saliency Map %s" % title)
 
-            ax[method_idx][i].axis('off')
+            ax[i][method_idx].axis('off')
     plt.tight_layout()
     plt.show()
 

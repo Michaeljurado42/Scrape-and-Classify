@@ -1,12 +1,13 @@
 from scipy.sparse.construct import random
 import tensorflow as tf
-from tensorflow.keras.applications import MobileNet, ResNet50, MobileNetV2
+from tensorflow.keras.applications import MobileNet, ResNet50, MobileNetV2, VGG16
 from tensorflow.keras.layers import Input, Dense, Flatten
 import tensorflow.keras.preprocessing
 import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 
+from utils.visualization_utils import plot_confusion_matrix
 from tensorflow.python.ops.gen_math_ops import mod
 
 def deep_learning_wrapper(image_size: tuple, MODEL, num_logits: int, trainable = False):
@@ -56,6 +57,7 @@ def create_training_testing_split(test_split_percent = .15, validation_split_per
         train_files, test_files = sklearn.model_selection.train_test_split(np.array(files), test_size = test_split_percent, random_state=42)
         train_files, val_files = sklearn.model_selection.train_test_split(np.array(train_files), test_size = test_split_percent, random_state=42)
 
+        # copy all files from dataset to train val test split
         for i in train_files:
             image_id += 1
             print("dataset/%s/%s" % (dir_, i))
@@ -88,10 +90,9 @@ def flatten_model(model_nested:tf.keras.Model):
         get_layers(model_nested.layers)
     )
     return model_flat
-
 import os
 if __name__ == "__main__":
-    p = argparse.ArgumentParser(description="scrapes google images using google chrome and puts the images into a dataset folder")
+    p = argparse.ArgumentParser(description="Transfer learning on images in a dataset folder")
     p.add_argument('classes',  nargs='*', type = str, help = "classes to include in the classification problem. (ie dog vs cat or dog vs random")    
     p.add_argument("--model_type", type = str, help = "model type. Supports mobilenet, resnet50, mobilenetv2", default = "mobilenet")
     args = p.parse_args()
@@ -104,17 +105,17 @@ if __name__ == "__main__":
     train_dir = "dataset/train_" + problem_string
     test_dir = "dataset/test_" + problem_string
     val_dir = "dataset/val_" + problem_string
-    #create_training_testing_split(classes = classes,train_dir=train_dir, test_dir=test_dir, val_dir=val_dir)  # split data into train test split
+    create_training_testing_split(classes = classes,train_dir=train_dir, test_dir=test_dir, val_dir=val_dir)  # split data into train test split
 
-    if model_type == "resnet":
-        preprocessing_function = tensorflow.keras.applications.resnet.preprocess_input
-        MODEL = ResNet50
+    if model_type == "vgg16":
+        preprocessing_function = tensorflow.keras.applications.vgg16.preprocess_input
+        MODEL = VGG16
     elif model_type == "mobilenet":
         preprocessing_function = tensorflow.keras.applications.mobilenet.preprocess_input
         MODEL = MobileNet
-    elif model_type == "mobilenetv2":
-        preprocessing_function =  tensorflow.keras.applications.mobilenet_v2.preprocess_input
-        MODEL = MobileNetV2
+    # elif model_type == "mobilenetv2": # this does not work
+    #     preprocessing_function =  tensorflow.keras.applications.mobilenet_v2.preprocess_input
+    #     MODEL = MobileNetV2
     
     # apply numerous augmentations
     train_datagen = tensorflow.keras.preprocessing.image.ImageDataGenerator(
@@ -173,3 +174,8 @@ if __name__ == "__main__":
     print("saving model")
     model.save(problem_string + "_" + model_type+ "_model.h5")
     
+    # plot confusion matrices
+    ax = plot_confusion_matrix(test_generator.classes, argmax_predictions, classes=classes,
+                        title='Confusion matrix, without normalization')
+    plt.show()
+    plt.tight_layout()
