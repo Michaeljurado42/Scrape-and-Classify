@@ -4,7 +4,7 @@ This lightweight tool makes the machine learning image classification easy. It a
 ## Environment Setup 
 ### manual setup
     pip install matplotlib
-    pip install tensorflow-gpu
+    pip install tensorflow==2.2.0
     pip install scikit-learn
     pip install PyYAML
     pip install Random-Word 
@@ -18,6 +18,22 @@ The dataset application requires chromedriver.exe to be placed in the repository
     python google_image_scraping_script.py <class1>, <class2>, ... <classn> --num_images <number of images for each class>
 This script creates a dataset directory with class subdirectories. Run with "--help" 
 for more information
+
+## 1.1: Cifar-10 instructions
+    Download dataset from https://github.com/YoongiKim/CIFAR-10-images/tree/master/train and extract to dataset folder
+    Example Project structure
+    Scrape-And-Classify
+        dataset
+            airplane
+            automobile
+            bird
+            cat
+            deer
+            dog
+            frog
+            horse
+            ship
+            truck
 
 ## 2: Train Classifier
     python transfer_learning.py <class1>, <class2>, ... <classn> --model_type <string identifier>
