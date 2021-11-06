@@ -69,6 +69,25 @@ def create_training_testing_split(test_split_percent = .15, validation_split_per
             print("dataset/%s/%s" % (dir_, i))
             copyfile("dataset/%s/%s" % (dir_, i), "%s/%s/%d.jpg" % (val_dir, dir_, image_id))        
 
+def flatten_model(model_nested:tf.keras.Model):
+    """Takes a keras model and automatically flattens it so it can be used with grad cam
+
+    Args:
+        model_nested (tf.keras.Model): model with Functional layers
+    """
+    def get_layers(layers):
+        layers_flat = []
+        for layer in layers:
+            try:
+                layers_flat.extend(get_layers(layer.layers))
+            except AttributeError:
+                layers_flat.append(layer)
+        return layers_flat
+
+    model_flat = tf.keras.Sequential(
+        get_layers(model_nested.layers)
+    )
+    return model_flat
 
 import os
 if __name__ == "__main__":
@@ -113,32 +132,34 @@ if __name__ == "__main__":
     testing_datagen = tensorflow.keras.preprocessing.image.ImageDataGenerator(preprocessing_function=preprocessing_function)    
 
     # create data generators
-    training_generator = train_datagen.flow_from_directory(train_dir, target_size=target_size, class_mode="sparse", batch_size = 128, shuffle = True)
-    validation_generator = validation_datagen.flow_from_directory(val_dir, target_size=target_size, class_mode="sparse",  batch_size = 128, shuffle = False)
-    test_generator = testing_datagen.flow_from_directory(test_dir, target_size=target_size, class_mode="sparse",  batch_size = 128, shuffle = False)
+    training_generator = train_datagen.flow_from_directory(train_dir, target_size=target_size, class_mode="categorical", batch_size = 128, shuffle = True)
+    validation_generator = validation_datagen.flow_from_directory(val_dir, target_size=target_size, class_mode="categorical",  batch_size = 128, shuffle = False)
+    test_generator = testing_datagen.flow_from_directory(test_dir, target_size=target_size, class_mode="categorical",  batch_size = 128, shuffle = False)
 
     labels = (training_generator.class_indices)
     print(labels)
+
     # create transfer learn model
     image_size = tuple(list(target_size) + [3])
     model = deep_learning_wrapper(image_size, MODEL, np.unique(training_generator.classes).shape[0])
-    loss = tensorflow.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
-    model.compile(optimizer="Adam", loss=loss)
+    model = flatten_model(model)
+    loss = tensorflow.keras.losses.CategoricalCrossentropy(from_logits=True)
+    model.compile(optimizer="Adam", loss=loss, metrics = ["accuracy"])
 
     # define callbacks
-    early_stopping = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience = 3)
-    mcp_save = tf.keras.callbacks.ModelCheckpoint('trained_model.hdf5', save_best_only=True, monitor='val_loss', mode='min')
+    early_stopping = tf.keras.callbacks.EarlyStopping(monitor="val_accuracy", patience = 3)
+    mcp_save = tf.keras.callbacks.ModelCheckpoint('trained_model.hdf5', save_best_only=True, monitor='val_accuracy', mode='min')
     
     # fit and save best model
-    history = model.fit(training_generator, validation_data = validation_generator, epochs = 30, callbacks = [early_stopping, mcp_save])
+    history = model.fit(training_generator, validation_data = validation_generator, epochs = 30, callbacks = [early_stopping, mcp_save] )
     
-    # make learning curve and save
+    #make learning curve and save
     plt.figure()
-    plt.plot(np.arange(len(history.history["val_loss"])), history.history["val_loss"], label  = "validation")
-    plt.plot(np.arange(len(history.history["val_loss"])), history.history["loss"], label  = "training")
+    plt.plot(np.arange(len(history.history["val_accuracy"])), history.history["val_accuracy"], label  = "validation")
+    plt.plot(np.arange(len(history.history["accuracy"])), history.history["accuracy"], label  = "training")
     plt.title("Learning Curve")
     plt.xlabel("Epochs")
-    plt.ylabel("Categorical Crossentropy loss")
+    plt.ylabel("Accuracy")
     plt.legend()
     plt.tight_layout()
     plt.savefig("learning_curve.png")
@@ -146,14 +167,9 @@ if __name__ == "__main__":
     # get testing metrics
     predictions = model.predict(test_generator)
     argmax_predictions = np.argmax(predictions, axis = -1)
-    accuracy = np.sum(argmax_predictions == validation_generator.classes)/ len(argmax_predictions)
+    accuracy = np.sum(argmax_predictions == test_generator.classes)/ len(argmax_predictions)
     print("Testing accuracy", accuracy)
-    print("Test evaluate", model.evaluate(test_generator))
-    print("Train evaluate", model.evaluate(training_generator))
-    print("val evaluate", model.evaluate(validation_generator))
-
-
 
     print("saving model")
-    model.save(problem_string + "_model.h5")
+    model.save(problem_string + "_" + model_type+ "_model.h5")
     

@@ -1,7 +1,6 @@
 from tensorflow.keras import layers, models, datasets
 import tensorflow as tf
 from matplotlib import pyplot as plt
-import tensorflow_hub as hub
 import numpy as np
 import cv2
 
@@ -50,7 +49,7 @@ def generate_cam_map(model:tf.keras.Model, image:np.array, label:int, type = "gr
     Returns:
         [type]: [description]
     """
-    model = flatten_model(model)
+    #model = flatten_model(model)
     conv_layers = np.array(["conv" in str(l) for l in model.layers])
     replace2linear = ReplaceToLinear()
 
@@ -124,24 +123,31 @@ if __name__ == "__main__":
     }
     #pretrained_model_without_top_layer = tf.keras.applications.MobileNet(input_shape=(224, 224, 3), include_top=False)
     image_titles = [image_dict[int(i[0])] for i in y_test]
-    model_path = "trained_model.h5"
-    model = tf.keras.models.load_model(model_path,   compile = True)
+    model_path = "airplane_automobile_bird_cat_deer_dog_frog_horse_ship_truck_mobilenet_model.h5"
+    model = tf.keras.models.load_model(model_path,   compile = False)
 
     methods = [generate_cam_map, generate_scorecam_map, generate_saliency_map]
-    f, ax = plt.subplots(nrows=len(methods), ncols=5, figsize=(12, 4))
+    f, ax = plt.subplots(nrows=len(methods), ncols=2, figsize=(12, 4))
     for method_idx in range(len(methods)): # iterate over score methods
         vis_method = methods[method_idx]
-        for i, title in enumerate(image_titles[:5]):
+        
+        for i, title in enumerate(image_titles[:2]):
             heatmap = vis_method(model, cv2.resize(x_test[i], (224, 224)), y_test[i][0]) # generate cam vis
-            ax[method_idx][i].set_title(title, fontsize=16)
             if vis_method == generate_saliency_map:
                 ax[method_idx][i].imshow(heatmap, cmap='jet') # do not overlay
             else:
                 ax[method_idx][i].imshow(cv2.resize(images[i],(224,224)))
                 ax[method_idx][i].imshow(heatmap, cmap='jet', alpha=0.5) # overlay
+
+            if vis_method == generate_cam_map:
+                ax[method_idx][i].set_title("Grad Cam for %s" % title)
+            elif vis_method == generate_scorecam_map:
+                ax[method_idx][i].set_title("Score Cam %s" % title)
+            elif vis_method ==  generate_saliency_map:
+                ax[method_idx][i].set_title("Saliency Map %s" % title)
+
             ax[method_idx][i].axis('off')
     plt.tight_layout()
     plt.show()
-
 
 
