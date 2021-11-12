@@ -1,6 +1,11 @@
 # Project Description
 This lightweight tool makes the machine learning image classification easy. It allows you to specify classes and download images from those classes from the internet. Then you can run a lighweight training script and train a classifier to differentiate images from those classes.
 
+## Running App
+```
+python app/app.py
+```
+
 ## Environment Setup 
 ### manual setup
     pip install matplotlib
