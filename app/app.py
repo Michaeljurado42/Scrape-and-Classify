@@ -1,35 +1,62 @@
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
 import plotly.express as px
 import pandas as pd
 
 app = dash.Dash(__name__)
 
-bar_df = pd.DataFrame({
-    "Fruit": ["Apples", "Oranges", "Bananas", "Apples", "Oranges", "Bananas"],
-    "Amount": [4, 1, 2, 2, 4, 5],
-    "City": ["SF", "SF", "SF", "Montreal", "Montreal", "Montreal"]
-})
-
 matrix_df = px.data.medals_wide(indexed=True)
-
-fig = px.bar(bar_df, x="Fruit", y="Amount", color="City", barmode="group")
 
 app.layout = html.Div(children=[
     # Header
     html.H1(children='Sample App with Plotly'),
 
+    # Read in classes
     html.Div(children='''
-        Visualize our data
+        Choose classes to build a model around:
     '''),
-
-    # Bar Graph
-    dcc.Graph(
-        id='example-graph',
-        figure=fig
+    dcc.Input(
+        id="classes",
+        type="text",
+        placeholder="name of classes seperated by comma"
     ),
+    html.Button('Create', id='submit-classes', n_clicks=0),
+    html.Div(
+        id="class_out",
+        children="",
+    ),
+
+    # Select which model
+    html.Div(children='''
+        Choose which model to train:
+    '''),
+    html.Div(dcc.Dropdown(
+        id="model",
+        options=[
+            {'label': 'MobileNetV2', 'value': 'mnv2'},
+        ],
+        value='mnv2',
+        clearable=False,
+        searchable=False
+    ), style={'width': '30%'}),
+    html.Div(id="chosen_model",
+        children="",
+    ),
+
+    # Select Hyperparameters
+    html.Div(children='''
+        Set hyperparameter values:
+    '''),
+    html.Div(dcc.Slider(
+        id="lr",
+        min=0,
+        max=1,
+        step=.005,
+        tooltip={"placement": "bottom", "always_visible": True},
+        value=0.01,
+    ), style={'width': '30%'}),
 
     # Confusion Matrix
     html.P("Medals included:"),
@@ -46,6 +73,37 @@ app.layout = html.Div(children=[
         children="",
     )
 ])
+
+
+# ******************* CALLBACK FUNCTIONS **********************************
+@app.callback(
+    Output("class_out", "children"),
+    Input('submit-classes', 'n_clicks'),
+    State("classes", "value")
+)
+def output_classes(clicks, class_str):
+    if class_str != None:
+        classes = class_str.split(",")
+
+        # ****************implement scraper fetching data*****************
+        # scraper(classes)
+
+        return "Creating dataset for the following classes: " + str(classes)
+    else:
+        return ""
+
+@app.callback(
+    Output('chosen_model', 'children'),
+    Input('model', 'value'),
+    Input('lr', 'value')
+)
+def fetch_model(model, epochs, lr, batch_size):
+
+    # ****************implement model setup for chosen model*****************
+    # model.train()
+    # for epoch
+
+    return ""
 
 @app.callback(
     Output("matrix", "figure"), 
