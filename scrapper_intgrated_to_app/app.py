@@ -78,7 +78,9 @@ app.layout = html.Div(children=[
     # Matrix Element
     html.Div(id="cm_element",
         children="",
-    )
+    ),
+
+
 ])
 
 
