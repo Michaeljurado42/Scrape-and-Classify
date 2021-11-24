@@ -7,6 +7,7 @@ import pandas as pd
 import os
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
+from tensorflow.keras.applications import mobilenet
 from tensorflow.python.keras.engine.training_utils import prepare_loss_functions
 from utils.keras_vis_helper import generate_grad_cam_map, generate_saliency_map, generate_scorecam_map
 import tensorflow as tf
@@ -15,11 +16,17 @@ import numpy as np
 
 app = dash.Dash(__name__)
 
-# Global variables to update
+
 matrix_df = px.data.medals_wide(indexed=True)
-background = plt.imread("graphics/machine_learning.png")
-model = tf.keras.models.load_model("airplane_automobile_bird_cat_deer_dog_frog_horse_ship_truck_mobilenet_model.h5")
-preprocessing_function =  tf.keras.applications.mobilenet.preprocess_input
+
+# Global variables for grad cam
+background = Image.open("graphics/machine_learning.png")
+model_path_wrapper = ["airplane_automobile_bird_cat_deer_dog_frog_horse_ship_truck_mobilenet_model.h5"]
+model_wrapper = [tf.keras.models.load_model(model_path_wrapper[0])]
+images = ["dataset/airplane/0000.jpg", "dataset/airplane/0001.jpg"]
+image_idx_wrapper = [0]
+
+
 app.layout = html.Div(children=[
     # Header
     html.H1(children='Sample App with Plotly'),
@@ -89,7 +96,8 @@ app.layout = html.Div(children=[
     html.Div(children='''
         Grad Cam Visualizations For Selected Square of Confusion Matrix:
     '''),    
-    dcc.Graph(id="grad_cam", figure = go.Figure(go.Image(z=background)), style={"width": "75%", "display": "inline-block"}, config = {"staticPlot": True}),
+
+    dcc.Graph(id="grad_cam", figure = go.Figure(go.Image(z=background)), style={"width": "75%", "display": "inline-block"}),
     
 
     html.Div(children='''
@@ -98,10 +106,11 @@ app.layout = html.Div(children=[
     html.Div(dcc.Dropdown(
         id="choose_class",
         options=[
+            {'label': '', 'value': "nothing"},
             {'label': 'car', 'value': 'car'},
             {'label': 'plane', 'value': 'plane'}
         ],
-        value='car',
+        value="nothing",
         clearable=False,
         searchable=False
     ), style={'width': '10%'}),
@@ -126,9 +135,6 @@ app.layout = html.Div(children=[
     '''),
     # TODO implement this. We 
     html.Button('Next', id='next', n_clicks=0),  
-    
-    # TODO Next has to update the image path
-    dcc.Store(id="image_path", data = "airplane_automobile_bird_cat_deer_dog_frog_horse_ship_truck_mobilenet_model.h5"),
 ])
 
 
@@ -187,24 +193,34 @@ def display_element(element):
 @app.callback(
     Output(component_id="grad_cam", component_property='figure'),
     Input(component_id="choose_class", component_property='value'),
-    Input(component_id="choose_method", component_property = 'value'),
-    Input(component_id="image_path", component_property = 'data')
+    Input(component_id="choose_method", component_property = 'value')
 )
-def display_grad_cam_image(classification_class, classification_method, image_path):
-    if classification_class == 'nothing' or not classification_method:
+def display_grad_cam_image(classification_class, vis_method):
+    if classification_class == 'nothing' or vis_method == 'nothing':
         return
-    #if classification_method == "grad_cam":
-    cam_method = generate_grad_cam_map
-    #elif classification_method == "score_cam":
-    #    cam_method = generate_scorecam_map
-    #elif classification_method == "saliency_map":
-    #    cam_method = generate_saliency_map
-    #model = tf.keras.models.load_model(model_path)
+
+    # unpack variables
+    model_path = model_path_wrapper[0]
+    model = model_wrapper[0]
+    if "mobilenet" in model_path:
+        preprocessing_function = tf.keras.applications.mobilenet.preprocess_input
+    else:
+        raise(Exception("Not implemented error"))
+
+    #import pdb; pdb.set_trace()
+    if vis_method == "grad_cam":
+        cam_method = generate_grad_cam_map
+    else:
+        raise(Exception("Not implemented error"))
+
+    image_path = images[image_idx_wrapper[0]]
+    print(image_path)
     original_image = Image.open(image_path)
-    image = np.array(original_image.resize((224, 224)))    
+    image = np.array(original_image.resize((224, 224)))
+    print(image.shape)
     image = preprocessing_function(image)
 
-    vis = cam_method(model, image, 0)
+    #vis = cam_method(model, image, 0)
     return go.Figure(go.Image(z=original_image))
 
 if __name__ == '__main__':
