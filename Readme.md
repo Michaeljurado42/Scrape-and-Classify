@@ -10,10 +10,13 @@ python app/app.py
 ### manual setup
     pip install matplotlib
     pip install tensorflow==2.2.0
+    pip install tf-keras-vis 
     pip install scikit-learn
     pip install PyYAML
     pip install Random-Word 
     pip install selenium
+    pip install dash
+    pip install pandas
 ### conda setup
     conda env create -f environment.yml
     conda activate instant_learning
@@ -55,6 +58,12 @@ To create a DNN classifier capable of differentiating hammers from everything el
 ##
     python google_image_scraping_script.py hammer random --num_images 1000
     python transfer_learning.py hammer random --model_type mobilenet    
+
+## Visualization Instructions
+Currently we are attempting to turn this project into an interactive application. Run these steps 
+##
+    python app/app.py
+    python scraper_integrated_app/app.py
 
 ## Repository Features
 * Uses data augmentation during training 
