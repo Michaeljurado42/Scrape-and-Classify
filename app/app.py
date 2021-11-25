@@ -1,29 +1,37 @@
 import dash
-import dash_core_components as dcc
-import dash_html_components as html
+from dash import dcc
+from dash import html
 from dash.dependencies import Input, Output, State
 import plotly.express as px
 import pandas as pd
 import os
+import sys
+sys.path.insert(0, '.')
+
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 from tensorflow.keras.applications import mobilenet
-from tensorflow.python.keras.engine.training_utils import prepare_loss_functions
 from utils.keras_vis_helper import generate_grad_cam_map, generate_saliency_map, generate_scorecam_map
 import tensorflow as tf
 from PIL import Image
 import numpy as np
+from scraping_script import *
+from trainer import train
+import uuid
 
 app = dash.Dash(__name__)
 
-
 matrix_df = px.data.medals_wide(indexed=True)
+
+#Global variables
+classes = None
+classifier = None
 
 # Global variables for grad cam
 background = Image.open("graphics/machine_learning.png")
 model_path_wrapper = ["airplane_automobile_bird_cat_deer_dog_frog_horse_ship_truck_mobilenet_model.h5"]
-model_wrapper = [tf.keras.models.load_model(model_path_wrapper[0])]
-images = ["dataset/airplane/0000.jpg", "dataset/airplane/0001.jpg"]
+# model_wrapper = [tf.keras.models.load_model(model_path_wrapper[0])]
+images = ["dataset/banana/0000.jpg", "dataset/banana/0001.jpg"]
 image_idx_wrapper = [0]
 
 
@@ -40,6 +48,12 @@ app.layout = html.Div(children=[
         type="text",
         placeholder="name of classes seperated by comma"
     ),
+    dcc.Input(
+        id="number_of_images",
+        type="text",
+        placeholder="number of images per class",
+        style={'marginLeft':'20px'}
+    ),
     html.Button('Create', id='submit-classes', n_clicks=0),
     html.Div(
         id="class_out",
@@ -50,7 +64,7 @@ app.layout = html.Div(children=[
     html.Div(children='''
         Choose which model to train:
     '''),
-    html.Div(dcc.Dropdown(
+    html.Div([html.Div(dcc.Dropdown(
         id="model",
         options=[
             {'label': 'MobileNetV2', 'value': 'mnv2'},
@@ -59,22 +73,50 @@ app.layout = html.Div(children=[
         clearable=False,
         searchable=False
     ), style={'width': '30%'}),
-    html.Div(id="chosen_model",
-        children="",
-    ),
 
     # Select Hyperparameters
     html.Div(children='''
         Set hyperparameter values:
     '''),
-    html.Div(dcc.Slider(
-        id="lr",
-        min=0,
-        max=1,
-        step=.005,
-        tooltip={"placement": "bottom", "always_visible": True},
-        value=0.01,
-    ), style={'width': '30%'}),
+    html.Div([
+        dcc.Input(
+            id="lr",
+            type="number",
+            placeholder="learning rate",
+        ),
+        dcc.Input(
+            id="epochs",
+            type="number",
+            placeholder="number of epochs",
+        ),
+        dcc.Input(
+            id="batch_size",
+            type="number",
+            placeholder="batch size",
+        )
+        ]),
+    html.Div(id="model_out", children=""),
+    dcc.Loading(
+        id="model_loading",
+        type="default",
+        children=html.Div(id="loading-output")
+    ),
+    html.Button('Train', id='submit-model', n_clicks=0)]),
+    html.Div(id="chosen_model",
+        children="",
+    ),
+    html.Div(id="train_loss",
+        children="",
+    ),
+    html.Div(id="train_acc",
+        children="",
+    ),
+    html.Div(id="test_loss",
+        children="",
+    ),
+    html.Div(id="test_acc",
+        children="",
+    ),
 
     # Confusion Matrix
     html.P("Medals included:"),
@@ -106,11 +148,9 @@ app.layout = html.Div(children=[
     html.Div(dcc.Dropdown(
         id="choose_class",
         options=[
-            {'label': '', 'value': "nothing"},
             {'label': 'car', 'value': 'car'},
             {'label': 'plane', 'value': 'plane'}
         ],
-        value="nothing",
         clearable=False,
         searchable=False
     ), style={'width': '10%'}),
@@ -121,12 +161,10 @@ app.layout = html.Div(children=[
     html.Div(dcc.Dropdown(
         id="choose_method",
         options=[
-            {'label': '', 'value': "nothing"},
             {'label' : 'Grad Cam', 'value': 'grad_cam'},
             {'label': 'Score Cam', 'value': 'score_cam'},
             {'label': 'Saliency map', 'value': 'saliency_map'}
         ],
-        value = 'nothing',
         clearable=False,
         searchable=False
     ), style={'width': '10%'}),  
@@ -142,31 +180,53 @@ app.layout = html.Div(children=[
 @app.callback(
     Output("class_out", "children"),
     Input('submit-classes', 'n_clicks'),
-    State("classes", "value")
+    State("classes", "value"),
+    State("number_of_images", "value")
 )
-def output_classes(clicks, class_str):
+def output_classes(clicks, class_str, num_image):
     if class_str != None:
+        global classes
         classes = class_str.split(",")
-
-        # ****************implement scraper fetching data*****************
-        # scraper(classes)
-
-        return "Creating dataset for the following classes: " + str(classes)
+        number_of_image=int(num_image)
+        class_str=str(classes)
+        # ****************fetching data*****************
+        print("Creating dataset for the following classes: " + class_str + " with "+ num_image + " images per class ")
+        scrape_data(classes, number_of_image)
+        return "Dataset creation finished"
     else:
         return ""
 
 @app.callback(
     Output('chosen_model', 'children'),
-    Input('model', 'value'),
-    Input('lr', 'value')
+    Output('train_loss', 'children'),
+    Output('train_acc', 'children'),
+    Output('test_loss', 'children'),
+    Output('test_acc', 'children'),
+    Output("loading-output", "children"),
+    Input('submit-model', 'n_clicks'),
+    State("model_loading", "children"),
+    State('model', 'value'),
+    State('lr', 'value'),
+    State('epochs', 'value'),
+    State('batch_size', 'value')
 )
-def fetch_model(model, epochs, lr, batch_size):
+def fetch_model(n_clicks, loading, model, lr, epochs, batch_size):
 
-    # ****************implement model setup for chosen model*****************
-    # model.train()
-    # for epoch
+    # ****************model setup*****************
+    inputs = [model, classes, lr, epochs, batch_size]
+    print(inputs)
+    if None not in inputs:
+        id = uuid.uuid4().hex
+        global classifier
+        classifier, train_history, test_history = train(id, model, classes, lr, int(epochs), int(batch_size))
+        return ("Model ID: " + id, 
+                "Train losses over epochs: " + str([round(loss, 3) for loss in train_history.history['loss']]),
+                "Train accuracy over epochs: " + str([round(acc, 3) for acc in train_history.history['acc']]),
+                "Test loss: " + str(round(test_history[0], 3)),
+                "Test accuracy: " + str(round(test_history[1], 3)),
+                loading)
 
-    return ""
+    return "", "", "", "", "", None
 
 @app.callback(
     Output("matrix", "figure"), 
@@ -188,8 +248,6 @@ def display_element(element):
     else:
         return "no element selected"
 
-
-
 @app.callback(
     Output(component_id="grad_cam", component_property='figure'),
     Input(component_id="choose_class", component_property='value'),
@@ -197,11 +255,11 @@ def display_element(element):
 )
 def display_grad_cam_image(classification_class, vis_method):
     if classification_class == 'nothing' or vis_method == 'nothing':
-        return
+        return go.Figure(go.Image(z=background))
 
     # unpack variables
     model_path = model_path_wrapper[0]
-    model = model_wrapper[0]
+    # model = model_wrapper[0]
     if "mobilenet" in model_path:
         preprocessing_function = tf.keras.applications.mobilenet.preprocess_input
     else:
