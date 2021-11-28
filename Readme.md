@@ -7,13 +7,25 @@ python app/app.py
 ```
 
 ## Environment Setup 
+This project works with python3 environments less than python3.9
 ### manual setup
-    pip install matplotlib
-    pip install tensorflow==2.2.0
-    pip install scikit-learn
-    pip install PyYAML
-    pip install Random-Word 
-    pip install selenium
+    dash==2.0.0
+    dash_bootstrap_components==1.0.0
+    dash_core_components==2.0.0
+    dash_html_components==2.0.0
+    keras==2.7.0
+    matplotlib==3.1.3
+    numpy==1.18.1
+    pandas==1.0.1
+    Pillow==8.4.0
+    plotly==5.4.0
+    random_word==1.0.7
+    requests==2.22.0
+    scikit_learn==1.0.1
+    scipy==1.4.1
+    selenium==4.1.0
+    tensorflow==2.2.0
+    tf_keras_vis==0.8.0
 ### conda setup
     conda env create -f environment.yml
     conda activate instant_learning
