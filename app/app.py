@@ -31,20 +31,16 @@ matrix_df = px.data.medals_wide(indexed=True)
 
 #Global variables
 classes = None
-list_of_images = []
-num_imgs = 0
+list_of_images = [] 
+num_imgs = [0]
 curr_num_img = 0
 
-for subdir, dirs, files in os.walk(os.getcwd() + "/dataset"):
-    for file in files:
-        list_of_images.append(os.path.join(subdir, file))
-        num_imgs+=1
 
 # Global variables for grad cam
 background = Image.open("graphics/machine_learning.png")
 model_path_wrapper = []
 model_wrapper = []
-images = list_of_images # TODO: Set to confusion matrix images
+confusion_matrix_image_subset = [] # TODO: Set to confusion matrix images
 image_idx_wrapper = [0]
 
 
@@ -92,9 +88,9 @@ app.layout = html.Div(children=[
     html.Div([html.Div(dcc.Dropdown(
         id="model",
         options=[
-            {'label': 'MobileNetV2', 'value': 'mnv2'},
+            {'label': 'MobileNet', 'value': 'mn'},
         ],
-        value='mnv2',
+        value='mn',
         clearable=False,
         searchable=False
     ), style={'width': '30%'}),
@@ -210,13 +206,25 @@ app.layout = html.Div(children=[
 )
 def output_classes(clicks, class_str, num_image):
     if class_str != None:
+        # clean class str
+        class_str = class_str.lower()
+
         global classes
         classes = class_str.split(",")
+        classes = [c.strip() for c in classes] # remove whitespace
         number_of_image=int(num_image)
         class_str=str(classes)
         # ****************fetching data*****************
         print("Creating dataset for the following classes: " + class_str + " with "+ num_image + " images per class ")
         scrape_data(classes, number_of_image)
+
+        # TODO
+        for subdir, dirs, files in os.walk("dataset"):
+            subdir= subdir.replace("\\ ", "/")
+            for file in files:
+                list_of_images.append("/".join([subdir, file]))
+                num_imgs[0] +=1
+        confusion_matrix_image_subset.extend(list_of_images) # TODO this should be determined by clicking on conf matrix
         return "Dataset creation finished"
     else:
         return ""
@@ -231,7 +239,7 @@ def toggle_modal(n1, n2, n3, is_open):
     changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
     if is_open:
         if 'no' in changed_id:
-            if (n2+n3) < num_imgs:
+            if (n2+n3) < num_imgs[0]:
                 print(n2+n3)
                 current_img1 = list_of_images[n2+n3]
                 test_base641 = base64.b64encode(open(current_img1, 'rb').read()).decode('ascii')
@@ -239,7 +247,7 @@ def toggle_modal(n1, n2, n3, is_open):
                 os.remove(list_of_images[n2+n3-1])
                 return True, 'data:image/png;base64,{}'.format(test_base641)
         elif 'yes' in changed_id:
-            if (n2+n3) < num_imgs:
+            if (n2+n3) < num_imgs[0]:
                 print(n2+n3)
                 current_img2 = list_of_images[n2+n3]
                 test_base642 = base64.b64encode(open(current_img2, 'rb').read()).decode('ascii')
@@ -320,8 +328,6 @@ def display_grad_cam_image(classification_class:int, vis_method:str, n_clicks:in
     """Updates the grad cam image based on the chosen classification_class and vis_method
     The chosen image depends on what square of the confusion matrix the user clicks on as well
     as how many times the user has pressed next.
-    TODO
-    -Stop hardcoding model_path, model, images, 
     Args:
         classification_class (int): 
         vis_method (str): [description]
@@ -329,6 +335,7 @@ def display_grad_cam_image(classification_class:int, vis_method:str, n_clicks:in
     Returns:
         go.Figure: An updated figure showing an image with cam visualization.
     """
+    images = confusion_matrix_image_subset # this should be set to a square of the confusion matrix
     # Do not run this method if the text boxes have not been populated
     if classification_class is None or vis_method is None:
         return go.Figure(go.Image(z=background))
@@ -339,7 +346,7 @@ def display_grad_cam_image(classification_class:int, vis_method:str, n_clicks:in
     model = model_wrapper[0]
 
     # Use model path name to determine type of model
-    if "mnv2" in model_path:
+    if "mn" in model_path:
         preprocessing_function = tf.keras.applications.mobilenet.preprocess_input
     elif "vgg16" in model_path:
        preprocessing_function = tf.keras.applications.vgg16.preprocess_input

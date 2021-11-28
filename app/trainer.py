@@ -46,8 +46,8 @@ def train(id, model_name, classes, lr, epochs, batch_size):
     X_train, y_train, X_test, y_test = preprocess(os.listdir(data_dir))
 
     print("Building Architecture ...")
-    if model_name == "mnv2":
-        pretrained_model_without_top_layer = tf.keras.applications.MobileNetV2(input_shape=(224, 224, 3), include_top=False)
+    if model_name == "mn":
+        pretrained_model_without_top_layer = tf.keras.applications.MobileNet(input_shape=(224, 224, 3), include_top=False)
         pretrained_model_without_top_layer.trainable = False
 
     input = tf.keras.layers.Input((224, 224, 3))
@@ -71,6 +71,9 @@ def train(id, model_name, classes, lr, epochs, batch_size):
     test_history = model.evaluate(X_test, y_test)
 
     print("Saving Model ...")
+    if not os.path.isdir("models/"):
+        os.makedirs("models")
+        
     model.save(f'models/{id}_{model_name}.h5')
 
     return f'models/{id}_{model_name}.h5', train_history, test_history
