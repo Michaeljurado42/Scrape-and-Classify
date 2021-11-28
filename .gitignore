@@ -2,3 +2,4 @@
 /dataset/
 /trained_model.hdf5
 .idea/
+app/__pycache__
