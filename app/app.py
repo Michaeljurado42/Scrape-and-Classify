@@ -25,7 +25,23 @@ import base64
 import os
 import gc
 
-app = dash.Dash(__name__)
+import dash_core_components as dc
+from urllib.parse import quote as urlquote
+from flask import Flask, send_from_directory
+from zipfile import ZipFile
+import shutil
+UPLOAD_DIRECTORY = "app_uploaded_zip"
+if not os.path.exists(UPLOAD_DIRECTORY):
+    os.makedirs(UPLOAD_DIRECTORY)
+
+
+server = Flask(__name__)
+app = dash.Dash(server=server)
+
+@server.route("/download/<path:path>")
+def download(path):
+    """Serve a file from the upload directory."""
+    return send_from_directory(UPLOAD_DIRECTORY, path, as_attachment=True)
 
 matrix_df = px.data.medals_wide(indexed=True)
 
@@ -34,7 +50,6 @@ classes = None
 list_of_images = [] 
 num_imgs = [0]
 curr_num_img = 0
-
 
 # Global variables for grad cam
 background = Image.open("graphics/machine_learning.png")
@@ -68,6 +83,12 @@ app.layout = html.Div(children=[
         id="class_out",
         children="",
     ),
+    dc.Upload(
+        id="upload-data", 
+        children = html.Div(html.Button('Upload a Dataset zip file')),multiple=True,
+        ),
+    html.Div(id="file-list"),
+
     dbc.Button("Clean Data", id="button"),
     dbc.Modal([
         dbc.ModalHeader("Would you like to keep this image?"),
@@ -197,6 +218,7 @@ app.layout = html.Div(children=[
 ])
 
 
+
 # ******************* CALLBACK FUNCTIONS **********************************
 @app.callback(
     Output("class_out", "children"),
@@ -228,6 +250,58 @@ def output_classes(clicks, class_str, num_image):
         return "Dataset creation finished"
     else:
         return ""
+
+#  *********************Preload Dataset*****************************
+def save_file(name, content):
+    """Decode and store a file uploaded with Plotly Dash."""
+    data = content.encode("utf8").split(b";base64,")[1]
+    with open(os.path.join(UPLOAD_DIRECTORY, name), "wb") as fp:
+        fp.write(base64.decodebytes(data))
+
+
+def uploaded_files():
+    """List the files in the upload directory."""
+    files = []
+    count = 0
+    for filename in os.listdir(UPLOAD_DIRECTORY):
+        zipFilePath = UPLOAD_DIRECTORY + "\\" + filename
+        path = os.path.join(UPLOAD_DIRECTORY, filename)
+        if os.path.isfile(path):
+            files.append(filename)
+        with ZipFile(zipFilePath, 'r') as zipObj:
+            #  zipObj.extractall('Dataset')
+             for zip_info in zipObj.infolist():
+                count = count +1 
+                
+                # if count != 1:                  
+                if zip_info.filename[-1] == '/':
+                    continue
+                # zip_info.filename = os.path.basename(zip_info.filename)
+                zip_filename = os.path.split(zip_info.filename)
+                subfolder = zip_filename[0].split('/')
+                zip_info.filename= os.path.join(subfolder[-1],zip_filename[1])
+                # input(zip_info.filename)
+                zipObj.extract(zip_info, 'dataset')
+           
+    return files
+
+
+@app.callback(
+    Output("file-list", "children"),
+    [Input("upload-data", "filename"), Input("upload-data", "contents")],
+)
+def update_output(uploaded_filenames, uploaded_file_contents):
+    # """Save uploaded files and regenerate the file list."""
+    # files = uploaded_files()
+    if uploaded_filenames is not None and uploaded_file_contents is not None:
+        for name, data in zip(uploaded_filenames, uploaded_file_contents):
+            save_file(name, data)
+    files = uploaded_files()
+    if len(files) != 0:
+        return "Zip file successfully uploaded and extracted"
+
+
+# *********************************************************************
 
 @app.callback(
     Output("modal", "is_open"),
