@@ -6,6 +6,7 @@ import tensorflow.keras.preprocessing
 import argparse
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 from utils.visualization_utils import plot_confusion_matrix
 from tensorflow.python.ops.gen_math_ops import mod
@@ -34,7 +35,7 @@ import sklearn.model_selection
 import numpy as np
 
 from shutil import copyfile
-def create_training_testing_split(test_split_percent = .15, validation_split_percent = .1, classes = [], train_dir = "dataset/train", test_dir = "dataset/test", val_dir = "dataset/val"):
+def create_training_testing_split(test_split_percent = .25, validation_split_percent = .1, classes = [], train_dir = "dataset/train", test_dir = "dataset/test", val_dir = "dataset/val"):
 
     dirs = os.listdir("dataset")
     if not os.path.isdir(train_dir):
@@ -42,9 +43,8 @@ def create_training_testing_split(test_split_percent = .15, validation_split_per
         os.mkdir(test_dir)
         os.mkdir(val_dir)
     else:
-        os.remove(train_dir)
-        os.remove(val_dir)
-        os.remove(test_dir)
+        return
+    print("test")
     dirs = [i for i in dirs if i in classes]
     image_id = 0
     for dir_ in dirs: # iterate over classes
@@ -90,6 +90,97 @@ def flatten_model(model_nested:tf.keras.Model):
         get_layers(model_nested.layers)
     )
     return model_flat
+
+def full_pipeline(model_type, classes, lr, epochs, batch_size):
+    # Adapted from dash use
+    target_size = (224, 224)
+
+    # create valid dataset partitions
+    problem_string = "_".join(classes)
+    train_dir = "dataset/train_" + problem_string
+    test_dir = "dataset/test_" + problem_string
+    val_dir = "dataset/val_" + problem_string
+    create_training_testing_split(classes = classes,train_dir=train_dir, test_dir=test_dir, val_dir=val_dir)  # split data into train test split
+
+    if model_type == "vgg16":
+        preprocessing_function = tensorflow.keras.applications.vgg16.preprocess_input
+        MODEL = VGG16
+    elif model_type == "mn":
+        preprocessing_function = tensorflow.keras.applications.mobilenet.preprocess_input
+        MODEL = MobileNet
+    # elif model_type == "mobilenetv2": # this does not work
+    #     preprocessing_function =  tensorflow.keras.applications.mobilenet_v2.preprocess_input
+    #     MODEL = MobileNetV2
+    
+    # apply numerous augmentations
+    train_datagen = tensorflow.keras.preprocessing.image.ImageDataGenerator(
+        #shear_range=0.2,
+        #zoom_range=0.2,
+        horizontal_flip=True,
+        # vertical_flip=True,
+#        rotation_range=10,
+        #brightness_range=[.3, 1],
+        # width_shift_range=.1,
+        # height_shift_range=.1,
+        preprocessing_function=preprocessing_function)
+    
+    validation_datagen = tensorflow.keras.preprocessing.image.ImageDataGenerator(preprocessing_function=preprocessing_function)    
+    testing_datagen = tensorflow.keras.preprocessing.image.ImageDataGenerator(preprocessing_function=preprocessing_function)    
+
+    # create data generators
+    training_generator = train_datagen.flow_from_directory(train_dir, target_size=target_size, class_mode="categorical", batch_size = batch_size, shuffle = True)
+    validation_generator = validation_datagen.flow_from_directory(val_dir, target_size=target_size, class_mode="categorical",  batch_size = batch_size, shuffle = False)
+    test_generator = testing_datagen.flow_from_directory(test_dir, target_size=target_size, class_mode="categorical",  batch_size = batch_size, shuffle = False)
+
+    labels = (training_generator.class_indices)
+    print(labels)
+
+    # create transfer learn model
+    image_size = tuple(list(target_size) + [3])
+    model = deep_learning_wrapper(image_size, MODEL, np.unique(training_generator.classes).shape[0])
+    model = flatten_model(model)
+    loss = tensorflow.keras.losses.CategoricalCrossentropy(from_logits=True)
+    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=lr), loss=loss, metrics = ["accuracy"])
+
+    # define callbacks
+    early_stopping = tf.keras.callbacks.EarlyStopping(monitor="val_accuracy", patience = 3)
+    mcp_save = tf.keras.callbacks.ModelCheckpoint('trained_model.hdf5', save_best_only=True, monitor='val_accuracy', mode='min')
+    
+    # fit and save best model
+    print("Training Model ... ")
+    history = model.fit(training_generator, validation_data = validation_generator, epochs = epochs, callbacks = [early_stopping, mcp_save])
+    print("Testing Model ... ")
+    test_history = model.evaluate(test_generator)
+    
+    #make learning curve and save
+    plt.figure()
+    plt.plot(np.arange(len(history.history["val_accuracy"])), history.history["val_accuracy"], label  = "validation")
+    plt.plot(np.arange(len(history.history["accuracy"])), history.history["accuracy"], label  = "training")
+    plt.title("Learning Curve")
+    plt.xlabel("Epochs")
+    plt.ylabel("Accuracy")
+    plt.legend()
+    plt.savefig("learning_curve.png")
+
+    # get testing metrics
+    predictions = model.predict(test_generator)
+    argmax_predictions = np.argmax(predictions, axis = 1)
+    accuracy = np.sum(argmax_predictions == test_generator.classes)/ len(argmax_predictions)
+    print("Testing accuracy", accuracy)
+
+    conf_matrix = tf.math.confusion_matrix(test_generator.classes, argmax_predictions)
+    matrix_df = pd.DataFrame(conf_matrix.numpy(), index=classes, columns=classes)
+
+    print("Saving Model ... ")
+    if not os.path.isdir("models/"):
+        os.makedirs("models")
+    
+    model.save("models/" + problem_string + "_" + model_type+ "_model.h5")
+    print("Done")
+    
+    return "models/" + problem_string + "_" + model_type+ "_model.h5", history, test_history, matrix_df 
+
+
 import os
 if __name__ == "__main__":
     p = argparse.ArgumentParser(description="Transfer learning on images in a dataset folder")
