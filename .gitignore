@@ -1,5 +1,5 @@
 /learning_curve.png
-/dataset/
+/dataset*
 /trained_model.hdf5
 .idea/
 app/__pycache__
