@@ -54,10 +54,11 @@ curr_num_img = 0
 
 
 # Global variables for grad cam
-background = Image.open("graphics/machine_learning.png")
+background = Image.open("graphics/stand_in_grad.jpg")
 model_path_wrapper = []
 model_wrapper = []
 confusion_matrix_image_subset = [] # TODO: Set to confusion matrix images
+confusion_matrix_image_mapping = {}
 image_idx_wrapper = [0]
 
 
@@ -244,7 +245,7 @@ def output_classes(clicks, class_str, num_image):
         print("Creating dataset for the following classes: " + class_str + " with "+ num_image + " images per class ")
         scrape_data(classes, number_of_image)
 
-        add_dataset_to_list_of_images()
+        #add_dataset_to_list_of_images()
         return "Dataset created with the following classes: " + ",".join(classes)
     else:
         return ""
@@ -289,6 +290,7 @@ def uploaded_files():
 
 @app.callback(
     Output("file_out", "children"),
+    Output("classes", "value"),
     [Input("upload-data", "filename"), Input("upload-data", "contents")],
 )
 def update_output(uploaded_filenames, uploaded_file_contents):
@@ -301,27 +303,9 @@ def update_output(uploaded_filenames, uploaded_file_contents):
         files = uploaded_files()
     if len(files) != 0:
         return "Zip file successfully uploaded and extracted with given classes: " + ",".join(classes)
-    add_dataset_to_list_of_images()
-    return ""
 
-
-@app.callback(
-    Output("classes", "value"),
-    Input("file_out", "children"),
-)
-def set_classes(children):
-    """Upon Uploading a Dataset zip file it is neccessary to fill in the values of the classes which you are
-    building the model on
-
-    Args:
-        children ([type]): [description]
-
-    Returns:
-        [type]: [description]
-    """
-    if children:
-        classes = children.split(":")[-1].strip().split(",")
-        return children.split(":")[-1].strip()
+    #add_dataset_to_list_of_images() # add 
+    return "", ",".join(classes)
 
 # *********************************************************************
 
@@ -379,7 +363,10 @@ def fetch_model(n_clicks, loading, model, lr, epochs, batch_size):
     inputs = [model, classes, lr, epochs, batch_size]
     print(inputs)
     if None not in inputs:
-        classifier, train_history, test_history, test_df = full_pipeline(model, classes, lr, int(epochs), int(batch_size))
+        classifier, train_history, test_history, test_df, conf_matrix_mapping_update = full_pipeline(model, classes, lr, int(epochs), int(batch_size))
+        
+        confusion_matrix_image_mapping.update(conf_matrix_mapping_update) # this contains mappings between imagenames and squares of conf matrix
+        print(confusion_matrix_image_mapping) 
 
         cols = test_df.columns.tolist()
         class_counts = test_df.sum(axis=1).tolist()
@@ -415,8 +402,14 @@ def fetch_model(n_clicks, loading, model, lr, epochs, batch_size):
     [Input('matrix', 'clickData')],
     )
 def display_element(element):
+    prediction = element['points'][0]['x']
+    truth_value = element['points'][0]['y']
+
+    # now 
+    confusion_matrix_image_subset.clear()
+    confusion_matrix_image_subset.extend(confusion_matrix_image_mapping[(prediction, truth_value)])
     if element is not None:
-        return u'{}, {}, {}'.format(element['points'][0]['x'], element['points'][0]['y'], element['points'][0]['z'])
+        return u'{}, {}, {}'.format(prediction, truth_value, element['points'][0]['z'])
     else:
         return ""
 

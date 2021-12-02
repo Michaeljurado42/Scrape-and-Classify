@@ -91,6 +91,42 @@ def flatten_model(model_nested:tf.keras.Model):
     )
     return model_flat
 
+def create_confusion_matrix_mapping(predictions:np.array, keras_test_generator, classes:list):
+    """This function creates a confusion matrix mapping that maps (prediction, truth_value) to a list of file names.
+    This is useful for correlating the square of the confusion matrix we click on with a subset of images
+
+    Args:
+        predictions (iterable): list of predictions made by our model
+        keras_test_generator (flow from generator object): generator of keras images (validation or testing)
+        classes (list): list of ground truth classes ie [plane, car]
+
+    Returns:
+        list: a confusion matrix mapping that maps (prediction, truth_value) to a list of file names
+    """
+    file_paths = keras_test_generator.filepaths
+    true_classes = keras_test_generator.classes
+    unique_classes = np.unique(true_classes)
+    num_classes = unique_classes.shape[0]
+
+    # Define a dictionary to help make our confusion matrix mapping
+    num_to_class = {}
+    for c in range(num_classes):
+        num_to_class[c] = classes[c]
+
+    # Iterate over the pairs of prediction and truth value to create subsets of images
+    file_name_dict = {}
+    for file_path, prediction, truth_value  in zip(file_paths, predictions,true_classes):
+        prediction = num_to_class[prediction]
+        truth_value = num_to_class[truth_value]
+
+        if (prediction, truth_value) not in file_name_dict:
+            file_name_dict[(prediction, truth_value)] = []
+        
+        file_name_dict[(prediction, truth_value)].append(file_path)
+    return file_name_dict
+
+
+
 def full_pipeline(model_type, classes, lr, epochs, batch_size):
     # Adapted from dash use
     target_size = (224, 224)
@@ -167,8 +203,9 @@ def full_pipeline(model_type, classes, lr, epochs, batch_size):
     argmax_predictions = np.argmax(predictions, axis = 1)
     accuracy = np.sum(argmax_predictions == test_generator.classes)/ len(argmax_predictions)
     print("Testing accuracy", accuracy)
-
     conf_matrix = tf.math.confusion_matrix(test_generator.classes, argmax_predictions)
+    conf_matrix_mapping = create_confusion_matrix_mapping(argmax_predictions, test_generator, classes)
+
     matrix_df = pd.DataFrame(conf_matrix.numpy(), index=classes, columns=classes)
 
     print("Saving Model ... ")
@@ -178,7 +215,7 @@ def full_pipeline(model_type, classes, lr, epochs, batch_size):
     model.save("models/" + problem_string + "_" + model_type+ "_model.h5")
     print("Done")
     
-    return "models/" + problem_string + "_" + model_type+ "_model.h5", history, test_history, matrix_df 
+    return "models/" + problem_string + "_" + model_type+ "_model.h5", history, test_history, matrix_df, conf_matrix_mapping
 
 
 import os
