@@ -131,6 +131,9 @@ def full_pipeline(model_type, classes, lr, epochs, batch_size):
     # Adapted from dash use
     target_size = (224, 224)
 
+    if not os.path.isdir("models/"):
+        os.makedirs("models")
+
     # create valid dataset partitions
     problem_string = "_".join(classes)
     train_dir = "dataset/train_" + problem_string
@@ -180,7 +183,7 @@ def full_pipeline(model_type, classes, lr, epochs, batch_size):
 
     # define callbacks
     early_stopping = tf.keras.callbacks.EarlyStopping(monitor="val_accuracy", patience = 3)
-    mcp_save = tf.keras.callbacks.ModelCheckpoint('trained_model.hdf5', save_best_only=True, monitor='val_accuracy', mode='min')
+    mcp_save = tf.keras.callbacks.ModelCheckpoint("models/" + problem_string + "_" + model_type+ "_checkpoint.h5", save_best_only=True, monitor='val_accuracy', mode='min')
     
     # fit and save best model
     print("Training Model ... ")
@@ -209,9 +212,6 @@ def full_pipeline(model_type, classes, lr, epochs, batch_size):
     matrix_df = pd.DataFrame(conf_matrix.numpy(), index=classes, columns=classes)
 
     print("Saving Model ... ")
-    if not os.path.isdir("models/"):
-        os.makedirs("models")
-    
     model.save("models/" + problem_string + "_" + model_type+ "_model.h5")
     print("Done")
     
