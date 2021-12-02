@@ -215,6 +215,13 @@ app.layout = html.Div(children=[
 ])
 
 
+def add_dataset_to_list_of_images():
+    for subdir, dirs, files in os.walk("dataset"):
+        subdir= subdir.replace("\\ ", "/")
+        for file in files:
+            list_of_images.append("/".join([subdir, file]))
+            num_imgs[0] +=1
+
 # ******************* CALLBACK FUNCTIONS **********************************
 @app.callback(
     Output("class_out", "children"),
@@ -237,11 +244,7 @@ def output_classes(clicks, class_str, num_image):
         print("Creating dataset for the following classes: " + class_str + " with "+ num_image + " images per class ")
         scrape_data(classes, number_of_image)
 
-        for subdir, dirs, files in os.walk("dataset"):
-            subdir= subdir.replace("\\ ", "/")
-            for file in files:
-                list_of_images.append("/".join([subdir, file]))
-                num_imgs[0] +=1
+        add_dataset_to_list_of_images()
         return "Dataset created with the following classes: " + ",".join(classes)
     else:
         return ""
@@ -298,9 +301,27 @@ def update_output(uploaded_filenames, uploaded_file_contents):
         files = uploaded_files()
     if len(files) != 0:
         return "Zip file successfully uploaded and extracted with given classes: " + ",".join(classes)
-    
+    add_dataset_to_list_of_images()
     return ""
 
+
+@app.callback(
+    Output("classes", "value"),
+    Input("file_out", "children"),
+)
+def set_classes(children):
+    """Upon Uploading a Dataset zip file it is neccessary to fill in the values of the classes which you are
+    building the model on
+
+    Args:
+        children ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """
+    if children:
+        classes = children.split(":")[-1].strip().split(",")
+        return children.split(":")[-1].strip()
 
 # *********************************************************************
 
