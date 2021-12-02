@@ -302,10 +302,9 @@ def update_output(uploaded_filenames, uploaded_file_contents):
             save_file(name, data)
         files = uploaded_files()
     if len(files) != 0:
-        return "Zip file successfully uploaded and extracted with given classes: " + ",".join(classes)
-
+        return "Zip file successfully uploaded and extracted with given classes: " + ",".join(classes), ",".join(classes)
     #add_dataset_to_list_of_images() # add 
-    return "", ",".join(classes)
+    return "", ""
 
 # *********************************************************************
 
@@ -361,7 +360,7 @@ def fetch_model(n_clicks, loading, model, lr, epochs, batch_size):
 
     # ****************model setup*****************
     inputs = [model, classes, lr, epochs, batch_size]
-    print(inputs)
+    print("Is it really prining this?", inputs)
     if None not in inputs:
         classifier, train_history, test_history, test_df, conf_matrix_mapping_update = full_pipeline(model, classes, lr, int(epochs), int(batch_size))
         
@@ -402,13 +401,13 @@ def fetch_model(n_clicks, loading, model, lr, epochs, batch_size):
     [Input('matrix', 'clickData')],
     )
 def display_element(element):
-    prediction = element['points'][0]['x']
-    truth_value = element['points'][0]['y']
-
-    # now 
-    confusion_matrix_image_subset.clear()
-    confusion_matrix_image_subset.extend(confusion_matrix_image_mapping[(prediction, truth_value)])
     if element is not None:
+        prediction = element['points'][0]['x']
+        truth_value = element['points'][0]['y']
+
+        # now 
+        confusion_matrix_image_subset.clear()
+        confusion_matrix_image_subset.extend(confusion_matrix_image_mapping[(prediction, truth_value)])
         return u'{}, {}, {}'.format(prediction, truth_value, element['points'][0]['z'])
     else:
         return ""
@@ -430,7 +429,6 @@ def display_grad_cam_image(classification_class:int, vis_method:str, n_clicks:in
     Returns:
         go.Figure: An updated figure showing an image with cam visualization.
     """
-    print(len(confusion_matrix_image_subset))
     images = confusion_matrix_image_subset # this should be set to a square of the confusion matrix
     # Do not run this method if the text boxes have not been populated
     if classification_class is None or vis_method is None or len(images) == 0:
