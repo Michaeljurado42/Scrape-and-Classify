@@ -344,7 +344,7 @@ def toggle_modal(n1, n2, n3, is_open):
                 return True, 'data:image/png;base64,{}'.format(test_base642), display_text
     elif n1:
         if (n2+n3+1 == num_imgs):
-            return False, None
+            return False, None, " "
         print(n2+n3)
         current_img = list_of_images[n2+n3]
         display_text = "This image from the dataset is classified as a " + current_img.split("/")[-2] + ". Would you like to keep this image in the dataset?"
