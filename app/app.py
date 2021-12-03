@@ -51,7 +51,7 @@ matrix_df = px.data.medals_wide(indexed=True)
 #Global variables
 classes = os.listdir("./dataset/") if os.path.isdir("./dataset/") else []
 classes = [name for name in classes if not name.startswith(('train', 'val', 'test'))]
-list_of_images = [] 
+list_of_images = []
 num_imgs = [0]
 curr_num_img = 0
 
@@ -75,7 +75,7 @@ app.layout = html.Div(children=[
     '''),
     dcc.Input(
         id="classes",
-        type="text", #"Found these current classes:" + ",".join(classes) if len(classes) > 0 else 
+        type="text", #"Found these current classes:" + ",".join(classes) if len(classes) > 0 else
         placeholder="Input comma seperated class names"
     ),
     dcc.Input(
@@ -86,7 +86,7 @@ app.layout = html.Div(children=[
     ),
     html.Button('Create', id='submit-classes', n_clicks=0),
     dc.Upload(
-        id="upload-data", 
+        id="upload-data",
         children = html.Div(html.Button('Upload a Dataset zip file', id='submit-file', n_clicks=0)),multiple=True,
     ),
     html.Div(
@@ -96,7 +96,7 @@ app.layout = html.Div(children=[
     html.Div(id="file_out"),
     dbc.Button("Clean Data", id="button"),
     dbc.Modal([
-        dbc.ModalHeader("Would you like to keep this image?"),
+        dbc.ModalHeader(children="Would you like to keep this image?", id = 'modalheader'),
         dbc.ModalBody(html.Img(src=None, id = 'curr_img', style={"width": "100%"})),
         dbc.ModalFooter([
             dbc.Button("No", id="no", className="ms-auto", n_clicks=0),
@@ -178,15 +178,15 @@ app.layout = html.Div(children=[
     html.Div(id="cm_element",
         children="",
     ),
-    
+
 
     # The rest of the code is dedicated to grad-cam related functions
      html.Div(children='''
         Grad Cam Visualizations For Selected Square of Confusion Matrix:
-    '''),    
+    '''),
 
     dcc.Graph(id="grad_cam", style={"width": "100%", "display": "inline-block"}),
-    
+
 
     html.Div(children='''
         Choose class to visualize:
@@ -199,7 +199,7 @@ app.layout = html.Div(children=[
     ), style={'width': '10%'}),
     html.Div(children='''
         Choose Grad Cam Method:
-    '''),   
+    '''),
 
     html.Div(dcc.Dropdown(
         id="choose_method",
@@ -211,12 +211,12 @@ app.layout = html.Div(children=[
         ],
         clearable=False,
         searchable=False
-    ), style={'width': '10%'}),  
+    ), style={'width': '10%'}),
     html.Div(children='''
         Choose Grad Cam Method:
     '''),
 
-    html.Button('Next', id='next', n_clicks=0),    
+    html.Button('Next', id='next', n_clicks=0),
 ])
 
 
@@ -275,9 +275,9 @@ def uploaded_files():
             with ZipFile(path, 'r') as zipObj:
                 #  zipObj.extractall('Dataset')
                 for zip_info in zipObj.infolist():
-                    count = count +1 
+                    count = count +1
 
-                    # if count != 1:                  
+                    # if count != 1:
                     if zip_info.filename[-1] == '/':
                         continue
                     # zip_info.filename = os.path.basename(zip_info.filename)
@@ -319,6 +319,7 @@ def update_output(uploaded_filenames, uploaded_file_contents):
 @app.callback(
     Output("modal", "is_open"),
     Output("curr_img", "src"),
+    Output("modalheader", "children"),
     [Input("button", "n_clicks"), Input("yes", "n_clicks"), Input("no", "n_clicks")],
     [State("modal", "is_open")],
 )
@@ -329,24 +330,27 @@ def toggle_modal(n1, n2, n3, is_open):
             if (n2+n3) < num_imgs[0]:
                 print(n2+n3)
                 current_img1 = list_of_images[n2+n3]
+                display_text = "This image from the dataset is classified as a " + current_img1.split("/")[-2] + ". Would you like to keep this image in the dataset?"
                 test_base641 = base64.b64encode(open(current_img1, 'rb').read()).decode('ascii')
                 print(list_of_images[n2+n3-1])
                 os.remove(list_of_images[n2+n3-1])
-                return True, 'data:image/png;base64,{}'.format(test_base641)
+                return True, 'data:image/png;base64,{}'.format(test_base641), display_text
         elif 'yes' in changed_id:
             if (n2+n3) < num_imgs[0]:
                 print(n2+n3)
                 current_img2 = list_of_images[n2+n3]
+                display_text = "This image from the dataset is classified as a " + current_img2.split("/")[-2] + ". Would you like to keep this image in the dataset?"
                 test_base642 = base64.b64encode(open(current_img2, 'rb').read()).decode('ascii')
-                return True, 'data:image/png;base64,{}'.format(test_base642)
+                return True, 'data:image/png;base64,{}'.format(test_base642), display_text
     elif n1:
         if (n2+n3+1 == num_imgs):
             return False, None
         print(n2+n3)
         current_img = list_of_images[n2+n3]
+        display_text = "This image from the dataset is classified as a " + current_img.split("/")[-2] + ". Would you like to keep this image in the dataset?"
         test_base640 = base64.b64encode(open(current_img, 'rb').read()).decode('ascii')
-        return not is_open, 'data:image/png;base64,{}'.format(test_base640)
-    return is_open, None
+        return not is_open, 'data:image/png;base64,{}'.format(test_base640), display_text
+    return is_open, None, " "
 
 @app.callback(
     Output('chosen_model', 'children'),
@@ -372,9 +376,9 @@ def fetch_model(n_clicks, loading, model, lr, epochs, batch_size):
     print("Is it really prining this?", inputs)
     if None not in inputs:
         classifier, train_history, test_history, test_df, conf_matrix_mapping_update = full_pipeline(model, classes, lr, int(epochs), int(batch_size))
-        
+
         confusion_matrix_image_mapping.update(conf_matrix_mapping_update) # this contains mappings between imagenames and squares of conf matrix
-        print(confusion_matrix_image_mapping) 
+        print(confusion_matrix_image_mapping)
 
         cols = test_df.columns.tolist()
         class_counts = test_df.sum(axis=1).tolist()
@@ -382,7 +386,7 @@ def fetch_model(n_clicks, loading, model, lr, epochs, batch_size):
         print(test_df)
         fig = px.imshow(test_df[cols], 0, 1, labels={"x": "Prediction", "y": "Ground Truth", "color": "Proportion of Ground Truth"})
         print("Displaying Model Results")
-        
+
         confusion_matrix_image_subset.extend(list_of_images)
 
         if len(model_path_wrapper) == 0:
@@ -391,7 +395,7 @@ def fetch_model(n_clicks, loading, model, lr, epochs, batch_size):
         else:
             model_path_wrapper[0] = classifier
             model_wrapper[0] = tf.keras.models.load_model(classifier)
-        return ("Model ID: " + classifier.split(".")[0], 
+        return ("Model ID: " + classifier.split(".")[0],
                 "Train losses over epochs: " + str([round(loss, 3) for loss in train_history.history['loss']]),
                 "Train accuracy over epochs: " + str([round(acc, 3) for acc in train_history.history['accuracy']]),
                 "Test loss: " + str(round(test_history[0], 3)),
@@ -400,7 +404,7 @@ def fetch_model(n_clicks, loading, model, lr, epochs, batch_size):
                 fig,
                 cols,
                 "Confusion Matrix With Classes: " + " ".join(classes))
-    
+
     values = matrix_df.columns.tolist()
     fig = px.imshow(matrix_df[values])
 
@@ -417,7 +421,7 @@ def display_element(element):
         prediction = element['points'][0]['x']
         truth_value = element['points'][0]['y']
 
-        # now 
+        # now
         confusion_matrix_image_subset.clear()
         confusion_matrix_image_subset.extend(confusion_matrix_image_mapping[(prediction, truth_value)])
         return u'{}, {}, {}'.format(prediction, truth_value, element['points'][0]['z']), truth_value, "none"
@@ -435,7 +439,7 @@ def display_grad_cam_image(classification_class:int, vis_method:str, n_clicks:in
     The chosen image depends on what square of the confusion matrix the user clicks on as well
     as how many times the user has pressed next.
     Args:
-        classification_class (int): 
+        classification_class (int):
         vis_method (str): [description]
         n_clicks (int): [description]
     Returns:
@@ -445,7 +449,7 @@ def display_grad_cam_image(classification_class:int, vis_method:str, n_clicks:in
     # Do not run this method if the text boxes have not been populated
     if classification_class is None or vis_method is None or len(images) == 0:
         return go.Figure(go.Image(z=background))
-    
+
     image_idx_wrapper[0] = n_clicks % len(images)
     #Unpack model
     model_path = model_path_wrapper[0]
@@ -483,7 +487,7 @@ def display_grad_cam_image(classification_class:int, vis_method:str, n_clicks:in
 
     # apply grad cam
     heatmap = cam_method(model, image, classification_class)
-    
+
     # Create heatmap using matplotlib
     fig = plt.figure()
     if vis_method == "saliency_map":
@@ -496,7 +500,7 @@ def display_grad_cam_image(classification_class:int, vis_method:str, n_clicks:in
     canvas = plt.gca().figure.canvas
     canvas.draw()
     data = np.frombuffer(canvas.tostring_rgb(), dtype=np.uint8)
-    grad_cam_image = data.reshape(canvas.get_width_height()[::-1] + (3,))  
+    grad_cam_image = data.reshape(canvas.get_width_height()[::-1] + (3,))
 
     # we do not actually want to plot anything using matplotlib. So we clear the figure
     fig.clear()
@@ -516,9 +520,9 @@ def display_grad_cam_image(classification_class:int, vis_method:str, n_clicks:in
     Input('file_out', 'children')
 )
 def set_class_options(n_clicks:int, file_clicks:int):
-    """When the user chooses classes to build this method will be called. It automatically 
-    populates the drop-down menu in the grad cam section. 
-    
+    """When the user chooses classes to build this method will be called. It automatically
+    populates the drop-down menu in the grad cam section.
+
     Args:
         n_clicks int: How many clicks were registered. The program just verifies that n_clicks != 0 before executing
         class_string str: This is the raw string of the classes in comma format
