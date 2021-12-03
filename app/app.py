@@ -53,7 +53,7 @@ matrix_df = px.data.medals_wide(indexed=True)
 
 #Global variables
 classes = os.listdir("./dataset/") if os.path.isdir("./dataset/") else []
-classes = [name for name in classes if not name.startswith(('train', 'val', 'test'))]
+classes = sorted([name for name in classes if not name.startswith(('train', 'val', 'test'))])
 list_of_images = []
 num_imgs = [0]
 curr_num_img = 0
@@ -216,7 +216,7 @@ app.layout = html.Div(children=[
         searchable=False
     ), style={'width': '10%'}),
     html.Div(children='''
-        Choose Grad Cam Method:
+        New Image:
     '''),
 
     html.Button('Next', id='next', n_clicks=0),
@@ -245,7 +245,7 @@ def output_classes(clicks, class_str, num_image):
         global classes
         classes = []
         classes = class_str.split(",")
-        classes = [c.strip() for c in classes] # remove whitespace
+        classes = sorted([c.strip() for c in classes]) # remove whitespace
         number_of_image=int(num_image)
         class_str=str(classes)
         # ****************fetching data*****************
@@ -291,7 +291,8 @@ def uploaded_files():
                     zip_info.filename= os.path.join(subfolder[-1],zip_filename[1])
                     # input(zip_info.filename)
                     zipObj.extract(zip_info, 'dataset')
-
+    
+    classes = sorted(classes)
     return files
 
 
@@ -377,7 +378,6 @@ def fetch_model(n_clicks, loading, model, lr, epochs, batch_size):
 
     # ****************model setup*****************
     inputs = [model, classes, lr, epochs, batch_size]
-    print("Is it really prining this?", inputs)
     if None not in inputs:
         classifier, train_history, test_history, test_df, conf_matrix_mapping_update = full_pipeline(model, classes, lr, int(epochs), int(batch_size))
 
@@ -407,7 +407,7 @@ def fetch_model(n_clicks, loading, model, lr, epochs, batch_size):
                 loading,
                 fig,
                 cols,
-                "Confusion Matrix With Classes: " + " ".join(classes))
+                "Confusion Matrix With Classes: " + ", ".join(classes))
 
     values = matrix_df.columns.tolist()
     fig = px.imshow(matrix_df[values])
