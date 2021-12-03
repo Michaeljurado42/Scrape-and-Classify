@@ -32,12 +32,14 @@ from flask import Flask, send_from_directory
 from zipfile import ZipFile
 import shutil
 
+
 UPLOAD_DIRECTORY = "app_uploaded_zip"
 if not os.path.exists(UPLOAD_DIRECTORY):
     os.makedirs(UPLOAD_DIRECTORY)
 
 server = Flask(__name__)
-app = dash.Dash(server=server)
+app = dash.Dash(server=server,external_stylesheets=[dbc.themes.BOOTSTRAP])
+#
 
 @server.route("/download/<path:path>")
 def download(path):
@@ -73,8 +75,8 @@ app.layout = html.Div(children=[
     '''),
     dcc.Input(
         id="classes",
-        type="text",
-        placeholder="Found these current classes:" + ",".join(classes) if len(classes) > 0 else "Input comma seperated class names"
+        type="text", #"Found these current classes:" + ",".join(classes) if len(classes) > 0 else 
+        placeholder="Input comma seperated class names"
     ),
     dcc.Input(
         id="number_of_images",
@@ -220,7 +222,7 @@ app.layout = html.Div(children=[
 
 def add_dataset_to_list_of_images():
     for subdir, dirs, files in os.walk("dataset"):
-        subdir= subdir.replace("\\ ", "/")
+        subdir= subdir.replace("\\", "/")
         for file in files:
             list_of_images.append("/".join([subdir, file]))
             num_imgs[0] +=1
@@ -247,7 +249,7 @@ def output_classes(clicks, class_str, num_image):
         print("Creating dataset for the following classes: " + class_str + " with "+ num_image + " images per class ")
         scrape_data(classes, number_of_image)
 
-        #add_dataset_to_list_of_images()
+        add_dataset_to_list_of_images()
         return "Dataset created with the following classes: " + ",".join(classes)
     else:
         return ""
@@ -298,14 +300,18 @@ def uploaded_files():
 def update_output(uploaded_filenames, uploaded_file_contents):
     # """Save uploaded files and regenerate the file list."""
     # files = uploaded_files()
+
     files = []
     if uploaded_filenames is not None and uploaded_file_contents is not None:
+        os.path.isdir("dataset")
+        shutil.rmtree("dataset")
+        os.mkdir("dataset")
         for name, data in zip(uploaded_filenames, uploaded_file_contents):
             save_file(name, data)
         files = uploaded_files()
     if len(files) != 0:
+        add_dataset_to_list_of_images()
         return "Zip file successfully uploaded and extracted with given classes: " + ",".join(classes), ",".join(classes)
-    #add_dataset_to_list_of_images() # add 
     return "", ""
 
 # *********************************************************************
