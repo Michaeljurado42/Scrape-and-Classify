@@ -36,6 +36,9 @@ import shutil
 UPLOAD_DIRECTORY = "app_uploaded_zip"
 if not os.path.exists(UPLOAD_DIRECTORY):
     os.makedirs(UPLOAD_DIRECTORY)
+else:
+    shutil.rmtree(UPLOAD_DIRECTORY)
+    os.makedirs(UPLOAD_DIRECTORY)
 
 server = Flask(__name__)
 app = dash.Dash(server=server,external_stylesheets=[dbc.themes.BOOTSTRAP])
@@ -302,9 +305,10 @@ def update_output(uploaded_filenames, uploaded_file_contents):
     # files = uploaded_files()
 
     files = []
-    if uploaded_filenames is not None and uploaded_file_contents is not None:
-        os.path.isdir("dataset")
-        shutil.rmtree("dataset")
+    if uploaded_filenames and uploaded_file_contents:
+        print("Made it here")
+        if os.path.isdir("dataset"):
+            shutil.rmtree("dataset")
         os.mkdir("dataset")
         for name, data in zip(uploaded_filenames, uploaded_file_contents):
             save_file(name, data)
