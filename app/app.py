@@ -165,7 +165,7 @@ app.layout = html.Div(children=[
     ),
 
     # Confusion Matrix
-    html.P("Test Confusion Matrix:"),
+    html.P("Sample Confusion Matrix:", id = "confusion_matrix_title"),
     dcc.Checklist(
         id='class_labels',
         value=matrix_df.columns.tolist(),
@@ -351,6 +351,7 @@ def toggle_modal(n1, n2, n3, is_open):
     Output("loading-output", "children"),
     Output("matrix", "figure"),
     Output("class_labels", "value"),
+    Output("confusion_matrix_title", "children"),
     Input('submit-model', 'n_clicks'),
     State("model_loading", "children"),
     State('model', 'value'),
@@ -391,12 +392,13 @@ def fetch_model(n_clicks, loading, model, lr, epochs, batch_size):
                 "Test accuracy: " + str(round(test_history[1], 3)),
                 loading,
                 fig,
-                cols)
+                cols,
+                "Confusion Matrix With Classes: " + " ".join(classes))
     
     values = matrix_df.columns.tolist()
     fig = px.imshow(matrix_df[values])
 
-    return "", "", "", "", "", None, fig, values
+    return "", "", "", "", "", None, fig, values, "Sample Confusion Matrix:"
 
 @app.callback(
     Output("cm_element", 'children'),
@@ -471,7 +473,6 @@ def display_grad_cam_image(classification_class:int, vis_method:str, n_clicks:in
         cam_method = generate_saliency_map
     else:
         raise(Exception("Vis mehod", vis_method, "not recognized"))
-
 
 
     # apply grad cam
