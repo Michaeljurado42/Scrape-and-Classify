@@ -1,3 +1,4 @@
+from operator import truth
 import pandas as pd
 import numpy as np
 import dash
@@ -201,6 +202,7 @@ app.layout = html.Div(children=[
     html.Div(dcc.Dropdown(
         id="choose_method",
         options=[
+            {'label': 'None', 'value': 'none'},
             {'label' : 'Grad Cam', 'value': 'grad_cam'},
             {'label': 'Score Cam', 'value': 'score_cam'},
             {'label': 'Saliency map', 'value': 'saliency_map'}
@@ -398,6 +400,8 @@ def fetch_model(n_clicks, loading, model, lr, epochs, batch_size):
 
 @app.callback(
     Output("cm_element", 'children'),
+    Output("choose_class", "value"),
+    Output("choose_method", "value"),
     [Input('matrix', 'clickData')],
     )
 def display_element(element):
@@ -408,9 +412,9 @@ def display_element(element):
         # now 
         confusion_matrix_image_subset.clear()
         confusion_matrix_image_subset.extend(confusion_matrix_image_mapping[(prediction, truth_value)])
-        return u'{}, {}, {}'.format(prediction, truth_value, element['points'][0]['z'])
+        return u'{}, {}, {}'.format(prediction, truth_value, element['points'][0]['z']), truth_value, "none"
     else:
-        return ""
+        return "", "", ""
 
 @app.callback(
     Output(component_id="grad_cam", component_property='figure'),
@@ -439,6 +443,15 @@ def display_grad_cam_image(classification_class:int, vis_method:str, n_clicks:in
     model_path = model_path_wrapper[0]
     model = model_wrapper[0]
 
+    # determine image path and open image
+    image_path = images[image_idx_wrapper[0]]
+    original_image = Image.open(image_path)
+    image = np.array(original_image.resize((224, 224)))
+    if vis_method == "none":
+        fig =  go.Figure(go.Image(z=original_image))
+        fig.update_layout(transition_duration=100)
+        return fig
+
     # Use model path name to determine type of model
     if "mn" in model_path:
         preprocessing_function = tf.keras.applications.mobilenet.preprocess_input
@@ -446,6 +459,8 @@ def display_grad_cam_image(classification_class:int, vis_method:str, n_clicks:in
        preprocessing_function = tf.keras.applications.vgg16.preprocess_input
     else:
         raise(Exception(model_path, "does not have a registered preprocessing_function"))
+
+    image = preprocessing_function(image)
 
     # Unpack visualization method for cam
     if vis_method == "grad_cam":
@@ -457,11 +472,7 @@ def display_grad_cam_image(classification_class:int, vis_method:str, n_clicks:in
     else:
         raise(Exception("Vis mehod", vis_method, "not recognized"))
 
-    # determine image path and open image
-    image_path = images[image_idx_wrapper[0]]
-    original_image = Image.open(image_path)
-    image = np.array(original_image.resize((224, 224)))
-    image = preprocessing_function(image)
+
 
     # apply grad cam
     heatmap = cam_method(model, image, classification_class)
@@ -489,7 +500,7 @@ def display_grad_cam_image(classification_class:int, vis_method:str, n_clicks:in
     gc.collect()
 
     fig =  go.Figure(go.Image(z=grad_cam_image))
-    fig.update_layout(transition_duration=500)
+    fig.update_layout(transition_duration=100)
     return fig
 
 @app.callback(
