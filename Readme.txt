@@ -1,0 +1,27 @@
+DESCRIPTION
+This is a tool to scrape and clean datasets for classification from google images, classify those images
+using transfer learning, and then diagnose the model performance using
+confusion matrices and grad cam. And it is all built into an easy to use app
+so that machine learning novices can quickly gain experience.
+
+There are two novelties in this application: 
+The first is that users can collect large datasets for image recognition tasks
+with minimal effort using this application. The second
+is that the confusion matrices produced after training are interactive,
+meaning that users can click on any corner of confusion matrices and apply
+grad-cam, score-cam, and saliency maps to images in that subset. This can be especially
+useful for diagnosing model failures and understanding the inner workings of a
+trained neural network. 
+
+INSTALLATION
+1) Verify you have a version of python < 3.9 on your device, like python=3.7.6 on your
+Windows PC or MAC
+2) Download Chrome from the internet (for the scraping tool)
+3) pip install -r requirements.txt
+
+EXECUTION
+1) python app/app.py
+
+Additional Instructions
+Once inside the app you can upload the small_dataset.zip class as a test and train your
+model. See the video for additional instructions.
