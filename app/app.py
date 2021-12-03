@@ -65,7 +65,7 @@ image_idx_wrapper = [0]
 
 app.layout = html.Div(children=[
     # Header
-    html.H1(children='Sample App with Plotly'),
+    html.H1(children='Confused Guide To Image Classification'),
 
     # Read in classes
     html.Div(children='''
