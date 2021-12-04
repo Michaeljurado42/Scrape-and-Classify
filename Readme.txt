@@ -23,5 +23,5 @@ EXECUTION
 1) python app/app.py
 
 Additional Instructions
-Once inside the app you can upload the small_dataset.zip class as a test and train your
+Once inside the app you can upload the dataset.zip class as a test and train your
 model. See the video for additional instructions.
