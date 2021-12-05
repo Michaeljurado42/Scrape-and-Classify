@@ -25,3 +25,6 @@ EXECUTION
 Additional Instructions
 Once inside the app you can upload the dataset.zip class as a test and train your
 model. See the video for additional instructions.
+
+VIDEO LINK
+https://youtu.be/zRKHzcFV0KQ
