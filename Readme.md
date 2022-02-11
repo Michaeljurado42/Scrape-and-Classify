@@ -1,6 +1,7 @@
 # Project Description
 
 DESCRIPTION
+
 This is a tool to scrape and clean datasets for classification from google images, classify those images
 using transfer learning, and then diagnose the model performance using
 confusion matrices and grad cam. And it is all built into an easy to use app
@@ -14,6 +15,8 @@ meaning that users can click on any corner of confusion matrices and apply
 grad-cam, score-cam, and saliency maps to images in that subset. This can be especially
 useful for diagnosing model failures and understanding the inner workings of a
 trained neural network. 
+
+![alt text](https://github.com/Michaeljurado24/Scrape-and-Classify/blob/master/graphics/scape-classify.jpg?raw=true)
 ## Running App
 ```
 python app/app.py
@@ -24,12 +27,12 @@ INSTALLATION
 1) Verify you have a version of python < 3.9 on your device, like python=3.7.6 on your
 Windows PC or MAC
 2) Download Chrome from the internet (for the scraping tool)
-3) pip install -r requirements.txt
+3) ```pip install -r requirements.txt```
 
 
 EXECUTION
 ```
-1) python app/app.py
+python app/app.py
 ```
 
 Additional Instructions
@@ -38,6 +41,11 @@ model. See the video for additional instructions.
 
 DEMO VIDEO
 https://youtu.be/zRKHzcFV0KQ
+
+Poster Presentation
+https://youtu.be/i_TPnr1pfeo
+
+
 © 2022 GitHub, Inc.
 Terms
 
